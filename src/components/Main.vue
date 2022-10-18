@@ -1,340 +1,196 @@
 <template>
-  <el-main class="main">
-    <el-button type="primary" @click="analysisHead">分析表头</el-button>
-    <el-button type="primary" @click="analysisBody">分析主体</el-button>
-    <el-button type="primary" @click="cmpDatas">比较data</el-button>
-    <el-button type="primary" @click="saveLocalStorage">保存到本地</el-button>
-    <el-button type="primary" @click="loadLocalStorage">从本地加载</el-button>
-
-    <el-radio-group v-model="splitString">
-      <el-radio :label="`,`">csv格式</el-radio>
-    </el-radio-group>
-    <div class="selectKey">
-      <span>选择1</span>
-      <el-select v-model="choiceVerticalLineNum1.name" placeholder="1姓名">
-        <el-option
-          v-for="item in tableDataHead1"
-          :key="item.key"
-          :label="item.value"
-          :value="item.key"
-        >
-        </el-option>
-      </el-select>
-      <el-select v-model="choiceVerticalLineNum1.total" placeholder="1分数">
-        <el-option
-          v-for="item in tableDataHead1"
-          :key="item.key"
-          :label="item.value"
-          :value="item.key"
-        >
-        </el-option>
-      </el-select>
-      <el-select v-model="choiceVerticalLineNum1.rank" placeholder="1名次">
-        <el-option
-          v-for="item in tableDataHead1"
-          :key="item.key"
-          :label="item.value"
-          :value="item.key"
-        >
-        </el-option>
-      </el-select>
-      <br />
-      <span>选择2</span>
-      <el-select v-model="choiceVerticalLineNum2.name" placeholder="2姓名">
-        <el-option
-          v-for="item in tableDataHead2"
-          :key="item.key"
-          :label="item.value"
-          :value="item.key"
-        >
-        </el-option>
-      </el-select>
-      <el-select v-model="choiceVerticalLineNum2.total" placeholder="2分数">
-        <el-option
-          v-for="item in tableDataHead2"
-          :key="item.key"
-          :label="item.value"
-          :value="item.key"
-        >
-        </el-option>
-      </el-select>
-      <el-select v-model="choiceVerticalLineNum2.rank" placeholder="2名次">
-        <el-option
-          v-for="item in tableDataHead2"
-          :key="item.key"
-          :label="item.value"
-          :value="item.key"
-        >
-        </el-option>
-      </el-select>
+    <div class="buttons">
+        <button @click="cmpData(true)">比较并显示结果</button>
+        <button @click="saveData">比较并保存结果</button>
+        <!-- <button>读取</button> -->
+        <button @click="openNotice">打开数据比较面板</button>
     </div>
-
-    <div class="input">
-      <el-input
-        type="textarea"
-        :autosize="{ minRows: 2, maxRows: 5 }"
-        placeholder="请输入内容"
-        v-model="exam1"
-      >
-      </el-input>
-      <el-input
-        type="textarea"
-        :autosize="{ minRows: 2, maxRows: 5 }"
-        placeholder="请输入内容"
-        v-model="exam2"
-      >
-      </el-input>
+    <div class="excelDatas">
+        <div class="excelBoard excelData" v-for="(excelData,index) in excelDatas">
+            <label class="excelBoard" :for="`inputFile${index}`">
+                <span>{{ excelData.desc }}</span>
+                <input
+                    accept=".xls, .xlsx"
+                    type="file"
+                    :id="`inputFile${index}`"
+                    style="display: none"
+                    @change="readExcel($event, index)"
+                />
+            </label>
+            <Excel
+                ref="childsExcelData"
+                :data="excelData.data"
+                :filename="excelData.filename"
+                :key="excelData.html"
+                :ver="excelData.ver"
+            />
+            <!-- <div v-html="excelData.html"></div> -->
+        </div>
     </div>
-    <div class="tableDatas" style="display: flex">
-      <el-table :data="tableDataBody1" height="500">
-        <el-table-column type="index" :index="indexMethod"> </el-table-column>
-        <el-table-column prop="name" label="姓名" sortable> </el-table-column>
-        <el-table-column prop="total" label="总分" sortable> </el-table-column>
-        <el-table-column prop="rank" label="排名" sortable> </el-table-column>
-      </el-table>
-      <el-table :data="tableDataBody2" style="margin-left: 10px" height="500">
-        <el-table-column type="index" :index="indexMethod"> </el-table-column>
-        <el-table-column prop="name" label="姓名" sortable> </el-table-column>
-        <el-table-column prop="total" label="总分" sortable> </el-table-column>
-        <el-table-column prop="rank" label="排名" sortable> </el-table-column>
-      </el-table>
-
-      <el-table
-        :data="cmpData"
-        style="flex-basis: 350px; margin-left: 10px"
-        height="500"
-      >
-        <el-table-column type="index" :index="indexMethod"> </el-table-column>
-        <el-table-column prop="name" label="姓名" width="100" sortable>
-        </el-table-column>
-        <el-table-column prop="total1" label="总分1" width="100" sortable>
-        </el-table-column>
-        <el-table-column prop="rank1" label="排名1" width="100" sortable>
-        </el-table-column>
-        <el-table-column prop="total2" label="总分2" width="100" sortable>
-        </el-table-column>
-        <el-table-column prop="rank2" label="排名2" width="100" sortable>
-        </el-table-column>
-        <el-table-column prop="up" label="提升" width="100" sortable>
-        </el-table-column>
-      </el-table>
-    </div>
-  </el-main>
+    <Notice ref="noticeShow" title="比较后数据">
+        <Excel :excelShow="true" :data="{}" :customData="customData" :filename="cmpFilename" />
+    </Notice>
 </template>
 
-<style lang="scss">
-div.input {
-  display: flex;
-  flex-direction: row;
-  width: 70%;
+<script setup lang="ts">
+import Excel from './Excel.vue';
+import Notice from "./Notice.vue";
+import { reactive, ref, unref } from 'vue';
+import * as XLSX from 'xlsx-js-style';
+
+const excelDatas = reactive([
+    { desc: '选择旧数据', html: "", ver: "old", json: {}, data: {}, filename: "" },
+    { desc: '选择新数据', html: "", ver: "new", json: {}, data: {}, filename: "" },
+]);
+const childsExcelData: {
+    ver: string;
+    finalData: XLSX.CellObject[][];
+    finalShortData: XLSX.CellObject[][];
+    headInfo: {
+        data: { id: number; data: string | undefined; }[];
+        selects: { selected: string; name: string; cnName: string; rex: RegExp; }[];
+        autoAnalyze: { x: number; name: string; }[];
+    }
+}[] = reactive([]);
+const noticeShow = ref();
+const customData = ref();
+const cmpDatas: XLSX.CellObject[][] = reactive([]);
+var cmpFilename = ref(new Date().getTime());
+
+function openNotice() {
+    cmpFilename.value = new Date().getTime();
+    customData.value = unref(cmpDatas);
+    noticeShow.value.noticeShow = !noticeShow.value.noticeShow;
 }
-.el-textarea {
-  margin: 10px 10px 10px 10px;
+
+function readExcel(e: any, type: number) {
+    const file: FileList = e.target.files;
+    //console.log(file[0]);
+
+    if (file.length <= 0) {
+        return false;
+    } else if (!/\.(xls|xlsx)$/.test(file[0].name.toLowerCase())) {
+        alert("上传格式不正确，请上传xls或者xlsx格式");
+        return false;
+    }
+
+    const fileReader = new FileReader();
+    fileReader.onload = ev => {
+        const workbook = XLSX.read(ev.target!.result, {
+            type: "binary",
+        });
+        const wsname = workbook.SheetNames[0];
+        //console.log(wsname);
+        excelDatas[type].filename = file[0].name;
+        excelDatas[type].data = workbook.Sheets[wsname];
+        excelDatas[type].json = XLSX.utils.sheet_to_json(workbook.Sheets[wsname]);
+        excelDatas[type].html = XLSX.utils.sheet_to_html(workbook.Sheets[wsname]);
+        //console.log(excelDatas);
+    }
+    fileReader.readAsBinaryString(file[0]);
 }
-</style>
-<script lang='ts'>
-import Vue from "vue";
 
-export default Vue.extend({
-  data: () => {
-    return {
-      exam1: "",
-      exam2: "",
-      splitString: `,`,
+function cmpData(openN: boolean): boolean {
+    const oldExcel = childsExcelData[0].ver == "old" ? childsExcelData[0] : childsExcelData[1];
+    const newExcel = childsExcelData[0].ver == "new" ? childsExcelData[0] : childsExcelData[1];
+    //console.log(oldExcel, newExcel);
+    if (!oldExcel.finalData.length || !newExcel.finalData.length) {
+        alert("错误的数据！请确保双方数据均已经正常解析！");
+        return false;
+    }
+    while (cmpDatas.length) cmpDatas.pop();
+    const oldData = oldExcel.finalShortData, newData = newExcel.finalShortData;
+    //console.log(oldData, newData);
 
-      choiceVerticalLineNum1: {
-        name: 0,
-        total: 0,
-        rank: 0,
-      },
-      choiceVerticalLineNum2: {
-        name: 0,
-        total: 0,
-        rank: 0,
-      },
-      tableDataHead1: [{ value: String(), key: Number() }],
-      tableDataHead2: [{ value: String(), key: Number() }],
-      tableDataBody1: [{ name: String(), total: Number(), rank: Number() }],
-      tableDataBody2: [{ name: String(), total: Number(), rank: Number() }],
-      cmpData: [
-        {
-          name: String(),
-          total1: Number(),
-          rank1: Number(),
-          total2: Number(),
-          rank2: Number(),
-          up: Number(),
-        },
-      ],
-    };
-  },
-  mounted() {
-    console.log("ok");
-  },
-  methods: {
-    saveLocalStorage() {
-      var { exam1, exam2 } = this;
-
-      this.$confirm("是否保存？注意：这将会覆盖本地记录", "确认通告", {
-        distinguishCancelAndClose: true,
-        confirmButtonText: "是",
-        cancelButtonText: "否",
-      })
-        .then(() => {
-          localStorage.setItem("exam1", exam1);
-          localStorage.setItem("exam2", exam2);
-          localStorage.setItem(
-            "choice",
-            JSON.stringify({
-              choice1: this.choiceVerticalLineNum1,
-              choice2: this.choiceVerticalLineNum2,
-            })
-          );
-          this.$message({
-            type: "info",
-            message: "已保存到本地",
-          });
-        })
-        .catch((action) => {
-          this.$message({
-            type: "info",
-            message: "取消保存",
-            //action === "cancel" ? "放弃保存并离开页面" : "停留在当前页面",
-          });
-        });
-
-      //
-    },
-    loadLocalStorage() {
-      this.$confirm(
-        "是否读取？注意：这将会覆盖显示界面，在本地中未存储的值将覆盖为空",
-        "确认通告",
-        {
-          distinguishCancelAndClose: true,
-          confirmButtonText: "是",
-          cancelButtonText: "否",
+    for (const [index, oldCells] of oldData.entries()) {
+        //console.log(oldCells[0].v);
+        for (const [inex, newCells] of newData.entries()) {
+            if (oldCells[0].v == newCells[0].v) {
+                //console.log(oldCells, newCells);
+                newCells.shift();
+                //console.log(oldCells[2], newCells[1]);
+                if (oldCells[2] && (typeof oldCells[2].v == 'number') && newCells[1] && (typeof newCells[1].v == 'number'))
+                    cmpDatas.push([...oldCells, ...newCells, { t: "n", v: oldCells[2].v - newCells[1].v }]);
+                else cmpDatas.push([...oldCells, ...newCells,]);
+            }
         }
-      )
-        .then(() => {
-          var exam1 = localStorage.getItem("exam1");
-          var exam2 = localStorage.getItem("exam2");
-          var choice = localStorage.getItem("choice");
+    }
+    cmpDatas[0][5] = { t: "s", v: "排名提升" };
+    //console.log(cmpDatas);
+    if (openN) openNotice();
+    return true;
+}
 
-          this.exam1 = exam1 ? exam1 : "";
-          this.exam2 = exam2 ? exam2 : "";
-
-          if (choice) {
-            var c: storageChoice = JSON.parse(choice);
-            this.choiceVerticalLineNum1 = c.choice1;
-            this.choiceVerticalLineNum2 = c.choice2;
-          }
-          if (exam1 || exam2) {
-            this.analysisHead();
-            this.analysisBody();
-          }
-
-          this.$message({
-            type: "info",
-            message: "已从本地中读取",
-          });
-        })
-        .catch((action) => {
-          this.$message({
-            type: "info",
-            message: "取消读取",
-            //action === "cancel" ? "放弃保存并离开页面" : "停留在当前页面",
-          });
-        });
-    },
-
-    indexMethod(index: number) {
-      return index + 1;
-    },
-    analysisHead() {
-      this.tableDataHead1 = [];
-      this.tableDataHead2 = [];
-
-      var { exam1, exam2, splitString } = this;
-
-      //console.log(splitString);
-      var examList1 = exam1.split("\n");
-      var examList2 = exam2.split("\n");
-
-      examList1[0].split(splitString).forEach((item, key) => {
-        this.tableDataHead1.push({
-          value: item,
-          key: key,
-        });
-      });
-      examList2[0].split(splitString).forEach((item, key) => {
-        this.tableDataHead2.push({
-          value: item,
-          key: key,
-        });
-      });
-    },
-    analysisBody() {
-      this.tableDataBody1 = [];
-      this.tableDataBody2 = [];
-
-      var { exam1, exam2, splitString } = this;
-
-      //console.log(splitString);
-      var examList1 = exam1.split("\n");
-      var examList2 = exam2.split("\n");
-
-      console.log(this.choiceVerticalLineNum1);
-
-      examList1.forEach((item, key) => {
-        var lineSplit = item.split(splitString);
-        if (key != 0) {
-          this.tableDataBody1.push({
-            name: lineSplit[this.choiceVerticalLineNum1.name],
-            total: parseInt(lineSplit[this.choiceVerticalLineNum1.total]),
-            rank: parseInt(lineSplit[this.choiceVerticalLineNum1.rank]),
-          });
+function saveData() {
+    if (!cmpData(false)) return;
+    //cmpDatas.unshift(cmpDatas[0]);
+    cmpDatas[0][1] = { t: "s", v: "旧" + cmpDatas[0][1].v };
+    cmpDatas[0][2] = { t: "s", v: "旧" + cmpDatas[0][2].v };
+    cmpDatas[0][3] = { t: "s", v: "新" + cmpDatas[0][3].v };
+    cmpDatas[0][4] = { t: "s", v: "新" + cmpDatas[0][4].v };
+    for (const [indexx, cells] of cmpDatas.entries()) {
+        for (const [indexy, cell] of cells.entries()) {
+            if (cmpDatas[indexx][indexy]) {
+                cmpDatas[indexx][indexy].s = {
+                    alignment: {
+                        wrapText: false,
+                        vertical: "center",
+                        horizontal: "center",
+                    },
+                    border: { // 设置边框
+                        top: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        left: { style: 'thin' },
+                        right: { style: 'thin' }
+                    }
+                }
+            }
         }
-      });
+    }
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(cmpDatas);
+    if (!ws['!cols']) ws['!cols'] = [];
+    ws['!cols'][2] = { wch: 10 };
+    ws['!cols'][4] = { wch: 10 };
+    ws['!cols'][5] = { wch: 13 };
 
-      examList2.forEach((item, key) => {
-        var lineSplit = item.split(splitString);
-        if (key != 0) {
-          this.tableDataBody2.push({
-            name: lineSplit[this.choiceVerticalLineNum2.name],
-            total: parseInt(lineSplit[this.choiceVerticalLineNum2.total]),
-            rank: parseInt(lineSplit[this.choiceVerticalLineNum2.rank]),
-          });
-        }
-      });
+    // if (!ws["!merges"]) ws["!merges"] = [];
+    // ws['!merges'].push(XLSX.utils.decode_range("A1:A2"));
+    // ws['!merges'].push(XLSX.utils.decode_range("B1:C1"));
+    // ws['!merges'].push(XLSX.utils.decode_range("D1:E1"));
+    // ws['!merges'].push(XLSX.utils.decode_range("F1:F2"));
 
-      console.log(this.tableDataBody1);
-      console.log(this.tableDataBody2);
-    },
-    cmpDatas() {
-      this.cmpData = [];
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
 
-      var data1: ExamStudent[] = this.tableDataBody1;
-      var data2: ExamStudent[] = this.tableDataBody2;
+    var saveFilenames: {
+        filenames: string[];
+        endname: string | null;
+        default: string;
+    } = { filenames: [], endname: null, default: "" };
+    for (const excelData of excelDatas) saveFilenames.filenames.push(excelData.filename.replace(/(\.xls)x?$/, ""));
+    saveFilenames.default = saveFilenames.filenames.join("and") + "=比较";
 
-      console.log(data1, data2);
-
-      data1.forEach((item1, key1) => {
-        data2.forEach((item2, key2) => {
-          if (item1.name == item2.name) {
-            this.cmpData.push({
-              name: item1.name,
-              total1: item1.total,
-              rank1: item1.rank,
-              total2: item2.total,
-              rank2: item2.rank,
-              up: item1.rank - item2.rank,
-            });
-          }
-        });
-      });
-      console.log(this.cmpData);
-    },
-  },
-});
+    saveFilenames.endname = (prompt("请输入保存文件名称：", saveFilenames.default) || saveFilenames.default) + ".xlsx";
+    XLSX.writeFile(wb, saveFilenames.endname);
+}
 </script>
 
+<style scoped>
+.excelDatas {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+}
+.excelData {
+    /* height: calc(50% - 10px); */
+    width: calc(50% - 10px);
+    overflow: auto;
+    white-space: nowrap;
+}
+.excelBoard {
+    min-height: 300px;
+    max-height: 800px;
+    padding: 5px;
+    border: solid 1px #eea931;
+}
+</style>
